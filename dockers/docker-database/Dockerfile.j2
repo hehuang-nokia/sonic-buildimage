@@ -13,9 +13,17 @@ RUN apt-get update
 # Install redis-server
 {% if CONFIGURED_ARCH == "armhf" %}
 RUN curl -k -o redis-tools_6.0.6-1~bpo10+1_armhf.deb "https://sonicstorage.blob.core.windows.net/packages/redis/redis-tools_6.0.6-1_bpo10+1_armhf.deb?sv=2015-04-05&sr=b&sig=67vHAMxsl%2BS3X1KsqhdYhakJkGdg5FKSPgU8kUiw4as%3D&se=2030-10-24T04%3A22%3A40Z&sp=r"
-RUN curl -k -o redis-server_6.0.6-1~bpo10+1_armhf.deb "https://sonicstorage.blob.core.windows.net/packages/redis/redis-server_6.0.6-1_bpo10+1_armhf.deb?sv=2015-04-05&sr=b&sig=xTdayvm0RBguxi9suyv855jKRjU%2FmKQ8nHuct4WSX%2FA%3D&se=2030-10-24T04%3A22%3A05Z&sp=r"
-RUN dpkg -i redis-tools_6.0.6-1~bpo10+1_armhf.deb redis-server_6.0.6-1~bpo10+1_armhf.deb || apt-get install -f
-RUN rm redis-tools_6.0.6-1~bpo10+1_armhf.deb redis-server_6.0.6-1~bpo10+1_armhf.deb
+RUN dpkg -i redis-tools_6.0.6-1~bpo10+1_armhf.deb || apt-get install -f
+RUN rm redis-tools_6.0.6-1~bpo10+1_armhf.deb
+
+# the downloaded binary is compiled with libc; build here to support jemalloc in 202012
+RUN apt-get install -y make build-essential git
+RUN mkdir -p ./redis_src6.0 && cd ./redis_src6.0 && git clone -b 6.0 https://github.com/redis/redis.git && cd redis && git checkout 7bf665f125a4771db095c83a7ad6ed46692cd314
+RUN cd ./redis_src6.0/redis && make MALLOC=jemalloc && make install PREFIX=/usr
+RUN mkdir -p /etc/redis && cp ./redis_src6.0/redis/redis.conf /etc/redis/
+RUN rm -rf  ./redis_src6.0
+RUN apt-get remove -y make build-essential git
+
 {% elif CONFIGURED_ARCH == "arm64" %}
 RUN curl -o redis-tools_6.0.6-1~bpo10+1_arm64.deb "https://sonicstorage.blob.core.windows.net/packages/redis/redis-tools_6.0.6-1_bpo10+1_arm64.deb?sv=2015-04-05&sr=b&sig=GbkJV2wWln3hoz27zKi5erdk3NDKrAFrQriA97bcRCY%3D&se=2030-10-24T04%3A22%3A21Z&sp=r"
 RUN curl -o redis-server_6.0.6-1~bpo10+1_arm64.deb "https://sonicstorage.blob.core.windows.net/packages/redis/redis-server_6.0.6-1_bpo10+1_arm64.deb?sv=2015-04-05&sr=b&sig=622w2KzIKIjAaaA0Bz12MzU%2BUBzY2AiXFIFfuKNoKSk%3D&se=2030-10-24T04%3A21%3A44Z&sp=r"
